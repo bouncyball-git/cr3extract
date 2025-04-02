@@ -1,5 +1,5 @@
 Utility for extracting embedded JPEGs from Canon CR3 raw file.
-
+```
 Usage: ./cr3extract <source.CR3> [-] [-v] [-m] [-j all|1|2|3] [-o FILENAME] [-h]
 Options:
   (no -j) : Extract largest JPEG preview unaltered (no EXIF changes) to file or stdout
@@ -13,3 +13,4 @@ Options:
   -o FILENAME : Specify output file name. In default mode or -j 1|2|3, FILENAME is used exactly.
                 In -j all mode, FILENAME is used as a base name with an index appended.
   -h      : Print this help message and exit
+```
