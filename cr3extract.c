@@ -43,7 +43,7 @@ void print_usage(const char *progname);
 
 // print_usage (unchanged)
 void print_usage(const char *progname) {
-    printf("Usage: %s <source.CR3> [-] [-v] [-m] [-j all|1|2|3] [-o FILENAME] [-h]\n", progname);
+    printf("Usage: %s <infile> [-] [-v] [-m] [-j all|1|2|3] [-o outfile] [-h]\n", progname);
     printf("Options:\n");
     printf("  (no -j) : Extract largest JPEG preview unaltered (no EXIF changes) to file or stdout\n");
     printf("  -       : Output to stdout (allowed in default mode and -j 1|2|3)\n");
