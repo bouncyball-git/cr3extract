@@ -1,4 +1,4 @@
-Utility for extracting embedded JPEGs from Canon CR3 raw file and copy EXIF and other metadata from the original.
+Utility for extracting embedded JPEGs from Canon CR3 raw file with option to copy metadata including EXIF from the original.
 ```
 Usage: ./cr3extract <source.CR3> [-] [-v] [-m] [-j all|1|2|3] [-o FILENAME] [-h]
 Options:
