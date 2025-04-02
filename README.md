@@ -1,6 +1,6 @@
 Utility for extracting embedded JPEGs from Canon CR3 raw file with option to copy metadata including EXIF/XMP from the original.
 ```
-Usage: ./cr3extract <source.CR3> [-] [-v] [-m] [-j all|1|2|3] [-o FILENAME] [-h]
+Usage: ./cr3extract <infile> [-] [-v] [-m] [-j all|1|2|3] [-o outfile]
 Options:
   (no -j) : Extract largest JPEG preview unaltered (no EXIF changes) to file or stdout
   -       : Output to stdout (allowed in default mode and -j 1|2|3)
