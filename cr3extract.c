@@ -8,10 +8,11 @@
 #include <fcntl.h>
 #endif
 
+// Updated JpegInfo to use size_t instead of long
 typedef struct {
-    long start;
-    long end;
-    long size;
+    size_t start;  // Changed from long to size_t
+    size_t end;    // Changed from long to size_t
+    size_t size;   // Changed from long to size_t
 } JpegInfo;
 
 #define STREAM_BUFFER_SIZE 4096
@@ -22,7 +23,7 @@ int g_extract_all = 0;
 int g_extract_index = -1;
 char *g_output_filename = NULL;
 
-// Function prototypes (unchanged except for extract_largest_jpeg)
+// Function prototypes
 int find_all_jpegs(FILE *file, JpegInfo **jpegs, int *count);
 uint16_t read16le(const unsigned char *data, size_t offset, size_t dataSize);
 uint32_t read32le(const unsigned char *data, size_t offset, size_t dataSize);
@@ -40,7 +41,7 @@ char* generate_output_filename(const char* source);
 char* generate_output_filename_all(const char* source, int index);
 void print_usage(const char *progname);
 
-// Updated print_usage to reflect new default behavior
+// print_usage (unchanged)
 void print_usage(const char *progname) {
     printf("Usage: %s <source.CR3> [-] [-v] [-m] [-j all|1|2|3] [-o FILENAME] [-h]\n", progname);
     printf("Options:\n");
@@ -57,12 +58,12 @@ void print_usage(const char *progname) {
     printf("  -h      : Print this help message and exit\n");
 }
 
-// find_all_jpegs (unchanged)
+// Updated find_all_jpegs with size_t
 int find_all_jpegs(FILE *file, JpegInfo **jpegs, int *count) {
     const size_t BUFFER_SIZE = 4096;
     unsigned char buffer[BUFFER_SIZE];
     size_t bytes_read;
-    long file_pos = 0;
+    size_t file_pos = 0;  // Changed from long to size_t
     int capacity = 10;
     *count = 0;
     *jpegs = malloc(capacity * sizeof(JpegInfo));
@@ -70,7 +71,7 @@ int find_all_jpegs(FILE *file, JpegInfo **jpegs, int *count) {
         perror("Failed to allocate memory for JPEG array");
         return -1;
     }
-    long start = -1;
+    size_t start = (size_t)-1;  // Changed from long to size_t, cast -1 to size_t
     unsigned char last_byte = 0;
     int has_last_byte = 0;
     rewind(file);
@@ -78,7 +79,7 @@ int find_all_jpegs(FILE *file, JpegInfo **jpegs, int *count) {
         if (has_last_byte && bytes_read > 0) {
             if (last_byte == 0xFF && buffer[0] == 0xD8)
                 start = file_pos - 1;
-            if (start != -1 && last_byte == 0xFF && buffer[0] == 0xD9) {
+            if (start != (size_t)-1 && last_byte == 0xFF && buffer[0] == 0xD9) {
                 if (*count >= capacity) {
                     capacity *= 2;
                     JpegInfo *temp = realloc(*jpegs, capacity * sizeof(JpegInfo));
@@ -93,13 +94,13 @@ int find_all_jpegs(FILE *file, JpegInfo **jpegs, int *count) {
                 (*jpegs)[*count].end = file_pos + 1;
                 (*jpegs)[*count].size = (*jpegs)[*count].end - (*jpegs)[*count].start;
                 (*count)++;
-                start = -1;
+                start = (size_t)-1;
             }
         }
         for (size_t i = 0; i < bytes_read - 1; i++) {
             if (buffer[i] == 0xFF && buffer[i + 1] == 0xD8)
                 start = file_pos + i;
-            if (start != -1 && buffer[i] == 0xFF && buffer[i + 1] == 0xD9) {
+            if (start != (size_t)-1 && buffer[i] == 0xFF && buffer[i + 1] == 0xD9) {
                 if (*count >= capacity) {
                     capacity *= 2;
                     JpegInfo *temp = realloc(*jpegs, capacity * sizeof(JpegInfo));
@@ -114,7 +115,7 @@ int find_all_jpegs(FILE *file, JpegInfo **jpegs, int *count) {
                 (*jpegs)[*count].end = file_pos + i + 2;
                 (*jpegs)[*count].size = (*jpegs)[*count].end - (*jpegs)[*count].start;
                 (*count)++;
-                start = -1;
+                start = (size_t)-1;
             }
         }
         if (bytes_read > 0) {
@@ -362,7 +363,7 @@ int minimizeExifData(unsigned char **exifSegment, size_t *exifSize) {
     return 1;
 }
 
-// insertExifIntoJpeg (unchanged)
+// insertExifIntoJpeg (corrected from previous fix)
 int insertExifIntoJpeg(const unsigned char *jpegData, size_t jpegSize,
                        unsigned char *exifSegment, size_t exifSize,
                        unsigned char **outputData, size_t *outputSize) {
@@ -380,7 +381,7 @@ int insertExifIntoJpeg(const unsigned char *jpegData, size_t jpegSize,
     memcpy(*outputData, jpegData, 2);
     pos += 2;
     (*outputData)[pos++] = 0xFF;
-    (*outputData)[pos++] = 0xE1;  // Fixed typo: outputDataA -> outputData, added missing parenthesis
+    (*outputData)[pos++] = 0xE1;
     uint16_t segLength = exifSize + 2;
     (*outputData)[pos++] = (segLength >> 8) & 0xFF;
     (*outputData)[pos++] = segLength & 0xFF;
@@ -390,7 +391,7 @@ int insertExifIntoJpeg(const unsigned char *jpegData, size_t jpegSize,
     return 1;
 }
 
-// Updated extract_largest_jpeg to use streaming, no EXIF changes
+// Updated extract_largest_jpeg with size_t
 int extract_largest_jpeg(const char *cr3_path, const char *output_path, int to_stdout, int verbose) {
     FILE *cr3_file = fopen(cr3_path, "rb");
     if (!cr3_file) {
@@ -420,8 +421,8 @@ int extract_largest_jpeg(const char *cr3_path, const char *output_path, int to_s
             largest_idx = i;
     }
 
-    long jpeg_start_offset = jpegs[largest_idx].start;
-    long jpeg_size = jpegs[largest_idx].size;
+    size_t jpeg_start_offset = jpegs[largest_idx].start;  // Changed from long to size_t
+    size_t jpeg_size = jpegs[largest_idx].size;          // Changed from long to size_t
 
     if (fseek(cr3_file, jpeg_start_offset, SEEK_SET) != 0) {
         perror("Failed to seek to JPEG start position in CR3 file");
@@ -437,7 +438,7 @@ int extract_largest_jpeg(const char *cr3_path, const char *output_path, int to_s
         _setmode(_fileno(stdout), _O_BINARY);
 #endif
         if (verbose)
-            fprintf(stderr, "Largest JPEG preview found (size: %ld bytes), streaming to stdout...\n", jpeg_size);
+            fprintf(stderr, "Largest JPEG preview found (size: %zu bytes), streaming to stdout...\n", jpeg_size);
     } else {
         output_stream = fopen(output_path, "wb");
         if (!output_stream) {
@@ -447,11 +448,10 @@ int extract_largest_jpeg(const char *cr3_path, const char *output_path, int to_s
             return -1;
         }
         if (verbose)
-            printf("Largest JPEG preview extracted to %s (size: %ld bytes)\n", output_path, jpeg_size);
+            printf("Largest JPEG preview extracted to %s (size: %zu bytes)\n", output_path, jpeg_size);
     }
 
-    // Stream the JPEG data directly from source to destination
-    long remaining = jpeg_size;
+    size_t remaining = jpeg_size;  // Changed from long to size_t
     unsigned char buffer[STREAM_BUFFER_SIZE];
     while (remaining > 0) {
         size_t to_read = remaining < STREAM_BUFFER_SIZE ? remaining : STREAM_BUFFER_SIZE;
@@ -491,7 +491,7 @@ int extract_largest_jpeg(const char *cr3_path, const char *output_path, int to_s
     return 0;
 }
 
-// extract_all_jpegs (unchanged)
+// Updated extract_all_jpegs with size_t
 int extract_all_jpegs(const char *cr3_path, int verbose) {
     FILE *cr3_file = fopen(cr3_path, "rb");
     if (!cr3_file) {
@@ -530,8 +530,8 @@ int extract_all_jpegs(const char *cr3_path, int verbose) {
     int result = 0;
     int max_extract = (jpeg_count < 3) ? jpeg_count : 3;
     for (int i = 0; i < max_extract; i++) {
-        long start_offset = jpegs[i].start;
-        long size_jpeg = jpegs[i].size;
+        size_t start_offset = jpegs[i].start;  // Changed from long to size_t
+        size_t size_jpeg = jpegs[i].size;      // Changed from long to size_t
         if (fseek(cr3_file, start_offset, SEEK_SET) != 0) {
             perror("Failed to seek to JPEG segment");
             result = -1;
@@ -543,7 +543,7 @@ int extract_all_jpegs(const char *cr3_path, int verbose) {
             result = -1;
             break;
         }
-        if (fread(jpeg_data, 1, size_jpeg, cr3_file) != size_jpeg) {
+        if (fread(jpeg_data, 1, size_jpeg, cr3_file) != size_jpeg) {  // Now both are size_t
             perror("Failed to read JPEG data");
             free(jpeg_data);
             result = -1;
@@ -598,7 +598,7 @@ int extract_all_jpegs(const char *cr3_path, int verbose) {
     return result;
 }
 
-// extract_specific_jpeg (unchanged)
+// Updated extract_specific_jpeg with size_t
 int extract_specific_jpeg(const char *cr3_path, int jpeg_index, int to_stdout, int verbose) {
     FILE *cr3_file = fopen(cr3_path, "rb");
     if (!cr3_file) {
@@ -628,8 +628,8 @@ int extract_specific_jpeg(const char *cr3_path, int jpeg_index, int to_stdout, i
         return -1;
     }
     int idx = jpeg_index - 1;
-    long jpeg_start_offset = jpegs[idx].start;
-    long jpeg_size = jpegs[idx].size;
+    size_t jpeg_start_offset = jpegs[idx].start;  // Changed from long to size_t
+    size_t jpeg_size = jpegs[idx].size;          // Changed from long to size_t
     if (fseek(cr3_file, jpeg_start_offset, SEEK_SET) != 0) {
         perror("Failed to seek to JPEG start position in CR3 file");
         fclose(cr3_file);
@@ -643,7 +643,7 @@ int extract_specific_jpeg(const char *cr3_path, int jpeg_index, int to_stdout, i
         free(jpegs);
         return -1;
     }
-    if (fread(jpeg_data, 1, jpeg_size, cr3_file) != jpeg_size) {
+    if (fread(jpeg_data, 1, jpeg_size, cr3_file) != jpeg_size) {  // Now both are size_t
         perror("Failed to read JPEG data from CR3 file");
         free(jpeg_data);
         fclose(cr3_file);
