@@ -7,9 +7,9 @@ CFLAGS = -Wall -Werror -Wextra
 #
 # Project files
 #
-SRCS = cr3extract.c
+SRCS = $(FILENAME).c
 OBJS = $(SRCS:.c=.o)
-EXE  = cr3extract
+EXE  = $(FILENAME)
 
 #
 # Debug build settings
