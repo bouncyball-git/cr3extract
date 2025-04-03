@@ -14,3 +14,9 @@ Options:
                 In -j all mode, FILENAME is used as a base name with an index appended.
   -h      : Print this help message and exit
 ```
+```
+Usage: cr3thumb <source.CR3> [-] [-v]
+```
+```
+Usage: exifcopy <source_cr3> <destination_jpeg> [-v]
+```
