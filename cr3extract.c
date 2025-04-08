@@ -63,7 +63,7 @@ int find_all_jpegs(FILE *file, JpegInfo **jpegs, int *count) {
     const size_t BUFFER_SIZE = 4096;
     unsigned char buffer[BUFFER_SIZE];
     size_t bytes_read;
-    size_t file_pos = 0;  // Changed from long to size_t
+    size_t file_pos = 0;
     int capacity = 10;
     *count = 0;
     *jpegs = malloc(capacity * sizeof(JpegInfo));
@@ -71,7 +71,7 @@ int find_all_jpegs(FILE *file, JpegInfo **jpegs, int *count) {
         perror("Failed to allocate memory for JPEG array");
         return -1;
     }
-    size_t start = (size_t)-1;  // Changed from long to size_t, cast -1 to size_t
+    size_t start = (size_t)-1;
     unsigned char last_byte = 0;
     int has_last_byte = 0;
     rewind(file);
@@ -391,7 +391,7 @@ int insertExifIntoJpeg(const unsigned char *jpegData, size_t jpegSize,
     return 1;
 }
 
-// Updated extract_largest_jpeg with size_t
+// Updated extract_largest_jpeg with size_t (unchanged in terms of JPEG selection)
 int extract_largest_jpeg(const char *cr3_path, const char *output_path, int to_stdout, int verbose) {
     FILE *cr3_file = fopen(cr3_path, "rb");
     if (!cr3_file) {
@@ -421,8 +421,8 @@ int extract_largest_jpeg(const char *cr3_path, const char *output_path, int to_s
             largest_idx = i;
     }
 
-    size_t jpeg_start_offset = jpegs[largest_idx].start;  // Changed from long to size_t
-    size_t jpeg_size = jpegs[largest_idx].size;          // Changed from long to size_t
+    size_t jpeg_start_offset = jpegs[largest_idx].start;
+    size_t jpeg_size = jpegs[largest_idx].size;
 
     if (fseek(cr3_file, jpeg_start_offset, SEEK_SET) != 0) {
         perror("Failed to seek to JPEG start position in CR3 file");
@@ -451,7 +451,7 @@ int extract_largest_jpeg(const char *cr3_path, const char *output_path, int to_s
             printf("Largest JPEG preview extracted to %s (size: %zu bytes)\n", output_path, jpeg_size);
     }
 
-    size_t remaining = jpeg_size;  // Changed from long to size_t
+    size_t remaining = jpeg_size;
     unsigned char buffer[STREAM_BUFFER_SIZE];
     while (remaining > 0) {
         size_t to_read = remaining < STREAM_BUFFER_SIZE ? remaining : STREAM_BUFFER_SIZE;
@@ -491,7 +491,7 @@ int extract_largest_jpeg(const char *cr3_path, const char *output_path, int to_s
     return 0;
 }
 
-// Updated extract_all_jpegs with size_t
+// Updated extract_all_jpegs with size_t and our new heuristic
 int extract_all_jpegs(const char *cr3_path, int verbose) {
     FILE *cr3_file = fopen(cr3_path, "rb");
     if (!cr3_file) {
@@ -515,6 +515,7 @@ int extract_all_jpegs(const char *cr3_path, int verbose) {
         free(jpegs);
         return -1;
     }
+
     unsigned char *exifSegment = NULL;
     size_t exifSize = 0;
     if (!extractCr3Exif_streaming(cr3_file, fileSize, &exifSegment, &exifSize, verbose)) {
@@ -527,11 +528,20 @@ int extract_all_jpegs(const char *cr3_path, int verbose) {
             exifSegment = NULL;
         }
     }
+
+    // New heuristic: if the first JPEG segment is below 8KB and there are at least 4 segments,
+    // skip the first segment by setting starting_index to 1.
+    int starting_index = 0;
+    if (jpeg_count >= 4 && jpegs[0].size < 8 * 1024) {
+        if (verbose)
+            fprintf(stderr, "First JPEG segment size %zu is below 8KB, skipping it.\n", jpegs[0].size);
+        starting_index = 1;
+    }
+    int max_extract = ((jpeg_count - starting_index) < 3) ? (jpeg_count - starting_index) : 3;
     int result = 0;
-    int max_extract = (jpeg_count < 3) ? jpeg_count : 3;
-    for (int i = 0; i < max_extract; i++) {
-        size_t start_offset = jpegs[i].start;  // Changed from long to size_t
-        size_t size_jpeg = jpegs[i].size;      // Changed from long to size_t
+    for (int i = starting_index; i < starting_index + max_extract; i++) {
+        size_t start_offset = jpegs[i].start;
+        size_t size_jpeg = jpegs[i].size;
         if (fseek(cr3_file, start_offset, SEEK_SET) != 0) {
             perror("Failed to seek to JPEG segment");
             result = -1;
@@ -543,7 +553,7 @@ int extract_all_jpegs(const char *cr3_path, int verbose) {
             result = -1;
             break;
         }
-        if (fread(jpeg_data, 1, size_jpeg, cr3_file) != size_jpeg) {  // Now both are size_t
+        if (fread(jpeg_data, 1, size_jpeg, cr3_file) != size_jpeg) {
             perror("Failed to read JPEG data");
             free(jpeg_data);
             result = -1;
@@ -553,7 +563,7 @@ int extract_all_jpegs(const char *cr3_path, int verbose) {
         size_t output_size = size_jpeg;
         if (exifSegment) {
             if (!insertExifIntoJpeg(jpeg_data, size_jpeg, exifSegment, exifSize, &output_data, &output_size)) {
-                fprintf(stderr, "Failed to insert EXIF into JPEG %d (using original JPEG).\n", i+1);
+                fprintf(stderr, "Failed to insert EXIF into JPEG %d (using original JPEG).\n", i + 1);
                 output_data = jpeg_data;
                 output_size = size_jpeg;
             } else {
@@ -562,7 +572,7 @@ int extract_all_jpegs(const char *cr3_path, int verbose) {
         }
         char *outfile = generate_output_filename_all((g_output_filename != NULL ? g_output_filename : cr3_path), i);
         if (!outfile) {
-            fprintf(stderr, "Failed to generate output filename for JPEG %d\n", i+1);
+            fprintf(stderr, "Failed to generate output filename for JPEG %d\n", i + 1);
             free(output_data);
             result = -1;
             break;
@@ -587,7 +597,7 @@ int extract_all_jpegs(const char *cr3_path, int verbose) {
         }
         if (verbose)
             fprintf(stderr, "Extracted JPEG %d to %s (size: %zu bytes) with %sEXIF\n",
-                    i+1, outfile, output_size, (exifSegment ? (g_minimize_exif ? "minimized " : "full ") : "no "));
+                    i + 1, outfile, output_size, (exifSegment ? (g_minimize_exif ? "minimized " : "full ") : "no "));
         fclose(outf);
         free(outfile);
         free(output_data);
@@ -598,7 +608,9 @@ int extract_all_jpegs(const char *cr3_path, int verbose) {
     return result;
 }
 
-// Updated extract_specific_jpeg with size_t
+// Updated extract_specific_jpeg with size_t and our new mapping heuristic.
+// If the first segment is invalid (below 8KB) and there are at least 4 segments,
+// we adjust the mapping so that -j 1 extracts jpegs[1], -j 2 extracts jpegs[2], and -j 3 extracts jpegs[3].
 int extract_specific_jpeg(const char *cr3_path, int jpeg_index, int to_stdout, int verbose) {
     FILE *cr3_file = fopen(cr3_path, "rb");
     if (!cr3_file) {
@@ -615,27 +627,34 @@ int extract_specific_jpeg(const char *cr3_path, int jpeg_index, int to_stdout, i
         fclose(cr3_file);
         return -1;
     }
-    if (jpeg_count == 0) {
-        fprintf(stderr, "No JPEG previews found in CR3 file: %s\n", cr3_path);
-        fclose(cr3_file);
-        free(jpegs);
-        return -1;
+    int idx = 0;
+    // Adjust index mapping if the first JPEG segment is too small.
+    if (jpeg_count >= 4 && jpegs[0].size < 8 * 1024) {
+        if (jpeg_index < 1 || jpeg_index > (jpeg_count - 1)) {
+            fprintf(stderr, "Requested JPEG index %d not available after skipping the invalid first segment. Only %d valid JPEG segments available.\n", jpeg_index, jpeg_count - 1);
+            fclose(cr3_file);
+            free(jpegs);
+            return -1;
+        }
+        if (verbose)
+            fprintf(stderr, "First JPEG segment size %zu is below 8KB, adjusting extraction index from %d to %d.\n", jpegs[0].size, jpeg_index, jpeg_index);
+        idx = jpeg_index; // e.g., -j 1 now maps to array index 1.
+    } else {
+        if (jpeg_index < 1 || jpeg_index > jpeg_count) {
+            fprintf(stderr, "Requested JPEG index %d not available. Only %d JPEG segments found.\n", jpeg_index, jpeg_count);
+            fclose(cr3_file);
+            free(jpegs);
+            return -1;
+        }
+        idx = jpeg_index - 1;
     }
-    if (jpeg_index < 1 || jpeg_index > jpeg_count) {
-        fprintf(stderr, "Requested JPEG index %d not available. Only %d JPEG segments found.\n", jpeg_index, jpeg_count);
-        fclose(cr3_file);
-        free(jpegs);
-        return -1;
-    }
-    int idx = jpeg_index - 1;
-    size_t jpeg_start_offset = jpegs[idx].start;  // Changed from long to size_t
-    size_t jpeg_size = jpegs[idx].size;          // Changed from long to size_t
-    if (fseek(cr3_file, jpeg_start_offset, SEEK_SET) != 0) {
+    if (fseek(cr3_file, jpegs[idx].start, SEEK_SET) != 0) {
         perror("Failed to seek to JPEG start position in CR3 file");
         fclose(cr3_file);
         free(jpegs);
         return -1;
     }
+    size_t jpeg_size = jpegs[idx].size;
     unsigned char *jpeg_data = (unsigned char *)malloc(jpeg_size);
     if (!jpeg_data) {
         perror("Failed to allocate memory for JPEG data");
@@ -643,7 +662,7 @@ int extract_specific_jpeg(const char *cr3_path, int jpeg_index, int to_stdout, i
         free(jpegs);
         return -1;
     }
-    if (fread(jpeg_data, 1, jpeg_size, cr3_file) != jpeg_size) {  // Now both are size_t
+    if (fread(jpeg_data, 1, jpeg_size, cr3_file) != jpeg_size) {
         perror("Failed to read JPEG data from CR3 file");
         free(jpeg_data);
         fclose(cr3_file);
